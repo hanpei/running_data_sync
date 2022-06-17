@@ -1,6 +1,9 @@
 download/*.zip
 activities/*.fit
 
+# temporary ignore for now
+.github/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

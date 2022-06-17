@@ -1,11 +1,13 @@
 import argparse
 import datetime
+import json
 
 import logging
 import os
+import sys
 
 from garmin import download_activities_by_date, make_garmin_client
-from strava import make_strava_client, upload_fit_to_strava
+from strava import make_strava_client, sync_garmin_to_strava_all, upload_fit_to_strava
 from utils import get_uploaded_activity_ids, set_uploaded_activity_ids
 
 # Configure debug logging
@@ -19,43 +21,14 @@ logger = logging.getLogger(__name__)
 # auto upload today's activities to strava by github action
 
 
-def sync_garmin_to_strava_all(strava_client, garmin_client):
-    downloaded_activity_ids = [
-        i.split("_")[0] for i in os.listdir("activities") if not i.startswith("_")
-    ]
-    logger.info(f"{downloaded_activity_ids}")
-    for id in downloaded_activity_ids:
-        data = garmin_client.get_activity_evaluation(id)
-        activityName = data['activityName']
-        # logger.info(f"Got activity name: {activityName}")
-        file_name = f"./activities/{id}_ACTIVITY.fit"
-        logger.info(f"Uploading {file_name}: {activityName}")
-        upload_fit_to_strava(strava_client, file_name, activityName)
+# 同步近三天数据
+def sync_last_three_days():
+    today = datetime.date.today()
+    delta_days = datetime.timedelta(days=3)
+    start_date = today - delta_days
 
-
-def sync_garmin_to_strava_difference(strava_client, garmin_client):
-    downloaded_activity_ids = [
-        i.split("_")[0] for i in os.listdir("activities") if not i.startswith("_")
-    ]
-    uploaded_activity_ids = get_uploaded_activity_ids()
-
-    new_activity_ids = list(
-        set(downloaded_activity_ids) - set(uploaded_activity_ids))
-
-    logger.info(
-        f"{len(new_activity_ids)} new activities to be upload to strava")
-
-    try:
-        for id in new_activity_ids:
-            data = garmin_client.get_activity_evaluation(id)
-            activityName = data['activityName']
-            # logger.info(f"Got activity name: {activityName}")
-            file_name = f"./activities/{id}_ACTIVITY.fit"
-            logger.info(f"Uploading {file_name}: {activityName}")
-            upload_fit_to_strava(strava_client, file_name, activityName)
-            uploaded_activity_ids.append(id)
-    finally:
-        set_uploaded_activity_ids(uploaded_activity_ids)
+    download_activities_by_date(garmin_client, start_date, today)
+    sync_garmin_to_strava_all(strava_client, garmin_client)
 
 
 if __name__ == "__main__":
@@ -82,12 +55,17 @@ if __name__ == "__main__":
         options.garmin_email,
         options.garmin_password)
 
-    today = datetime.date.today()
-    delta_days = datetime.timedelta(days=3)
-    start_date = today - delta_days
+    # get last upload id
+    upload_ids = get_uploaded_activity_ids()
+    last_upload_id = upload_ids[-1] if len(upload_ids) > 0 else None
+    if last_upload_id is None:
+        sys.exit(1)
 
-    download_activities_by_date(garmin_client, start_date, today)
-    sync_garmin_to_strava_difference(strava_client, garmin_client)
-    # sync_garmin_to_strava_all(strava_client, garmin_client)
-    # update_activity_status()
-    # get_uploaded_activity_ids()
+    activity = garmin_client.get_activity_evaluation(last_upload_id)
+    start_time = activity.get('summaryDTO').get('startTimeLocal')
+    start_date = datetime.datetime.fromisoformat(
+        start_time.split(".")[0]).date()
+    logger.info(f"last upload id: {last_upload_id}, date: {start_date}")
+
+    garmin_client.get_activities_by_date(start_date, datetime.date.today())
+    sync_garmin_to_strava_all(strava_client, garmin_client)

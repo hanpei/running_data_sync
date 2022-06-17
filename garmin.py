@@ -82,7 +82,7 @@ async def download_activites_by_id(client, activity_id):
 
 def get_activity_id_list(client, start=0):
     activities = client.get_activities(start, 100)
-    if len(activities) > 0:
+    if activities:
         ids = list(map(lambda a: str(a.get("activityId", "")), activities))
         print(f"Syncing Activity IDs")
         return ids + get_activity_id_list(client, start + 100)

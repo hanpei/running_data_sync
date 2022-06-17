@@ -1,4 +1,5 @@
 import argparse
+import json
 import logging
 import os
 import time
@@ -29,8 +30,9 @@ def make_strava_client(client_id, client_secret, refresh_token):
     refresh_response = client.refresh_access_token(
         client_id=client_id, client_secret=client_secret, refresh_token=refresh_token
     )
-
+    # logger.info(f"refresh_response: {refresh_response}")
     client.access_token = refresh_response["access_token"]
+
     return client
 
 
@@ -41,6 +43,13 @@ def upload_fit_to_strava(client, file_name, activity_name=None):
         logger.info("uploaded: %s", file_name)
 
 
+def upload_gpx_to_strava(client, file_name, activity_name=None):
+    with open(file_name, "rb") as f:
+        r = client.upload_activity(
+            activity_file=f, data_type="gpx", name=activity_name)
+        logger.info("uploaded: %s", file_name)
+
+
 def test_run_strava_sync(client_id, client_secret, refresh_token):
     client = make_strava_client(client_id, client_secret, refresh_token)
     upload_fit_to_strava(client, "./activities/191842160_ACTIVITY.fit")
@@ -48,28 +57,54 @@ def test_run_strava_sync(client_id, client_secret, refresh_token):
 
 def sync_garmin_to_strava_all(strava_client, garmin_client):
     downloaded_activity_ids = [
-        i.split("_")[0] for i in os.listdir("activities") if not i.startswith("_")
+        i.split("_")[0] for i in os.listdir("activities") if not i.startswith(".")
     ]
+
     uploaded = get_uploaded_activity_ids()
     logger.info(f"downloaded_activity_ids: {len(downloaded_activity_ids)}")
     new_activity_ids = list(
         set(downloaded_activity_ids) - set(uploaded))
+    new_activity_ids.sort(key=int)
 
     logger.info(
         f"{len(new_activity_ids)} new activities to be upload to strava")
 
     try:
-        for id in new_activity_ids:
+        for id in new_activity_ids[:50]:
             data = garmin_client.get_activity_evaluation(id)
             activityName = data['activityName']
             # logger.info(f"Got activity name: {activityName}")
             file_name = f"./activities/{id}_ACTIVITY.fit"
-            logger.info(f"Uploading {file_name}: {activityName}")
-            upload_fit_to_strava(strava_client, file_name, activityName)
-            uploaded.append(id)
-            time.sleep(0.2)
+
+            if os.path.exists(file_name):
+                logger.info(f"Uploading {file_name}: {activityName}")
+                upload_fit_to_strava(strava_client, file_name, activityName)
+                uploaded.append(id)
+                time.sleep(0.2)
+            else:
+                file_name = f"./activities/{id}_ACTIVITY.gpx"
+                logger.info(f"Uploading {file_name}: {activityName}")
+                upload_gpx_to_strava(strava_client, file_name, activityName)
+                uploaded.append(id)
+                time.sleep(0.2)
+
     finally:
         set_uploaded_activity_ids(uploaded)
+
+
+def get_strava_activity_ids(client):
+    activities = client.get_activities(limit=10)
+    ids = []
+    for activity in activities:
+        ids.append(activity.id)
+    # return ids + get_strava_activity_ids(client, limit=limit)
+    return ids
+
+
+def delete_strava_activities(client, activity_ids):
+    for id in activity_ids:
+        client.delete_activity(id)
+        logger.info(f"Deleted activity {id}")
 
 
 if __name__ == "__main__":
