@@ -92,6 +92,34 @@ def sync_garmin_to_strava_all(strava_client, garmin_client):
         set_uploaded_activity_ids(uploaded)
 
 
+def sync_gpx_to_strava_all(strava_client, garmin_client):
+    downloaded_activity_ids = [
+        i.split(".")[0] for i in os.listdir("nrc_type_gpx_data") if not i.startswith(".")
+    ]
+
+    uploaded = get_uploaded_activity_ids()
+    logger.info(f"downloaded_activity_ids: {len(downloaded_activity_ids)}")
+    new_activity_ids = list(
+        set(downloaded_activity_ids) - set(uploaded))
+    new_activity_ids.sort(key=int)
+
+    logger.info(
+        f"{len(new_activity_ids)} new activities to be upload to strava")
+
+    try:
+        for id in new_activity_ids[:50]:
+            file_name = f"./nrc_type_gpx_data/{id}.gpx"
+
+            if os.path.exists(file_name):
+                logger.info(f"Uploading {file_name}: {file_name}")
+                upload_gpx_to_strava(strava_client, file_name)
+                uploaded.append(id)
+                time.sleep(1)
+
+    finally:
+        set_uploaded_activity_ids(uploaded)
+
+
 def get_strava_activity_ids(client):
     activities = client.get_activities(limit=10)
     ids = []
