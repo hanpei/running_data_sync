@@ -1,5 +1,6 @@
 download/*.zip
 activities/*.fit
+temp/
 
 # temporary ignore for now
 # .github/
