@@ -80,13 +80,13 @@ def sync_garmin_to_strava_all(strava_client, garmin_client):
                 logger.info(f"Uploading {file_name}: {activityName}")
                 upload_fit_to_strava(strava_client, file_name, activityName)
                 uploaded.append(id)
-                time.sleep(0.2)
+                time.sleep(1)
             else:
                 file_name = f"./activities/{id}_ACTIVITY.gpx"
                 logger.info(f"Uploading {file_name}: {activityName}")
                 upload_gpx_to_strava(strava_client, file_name, activityName)
                 uploaded.append(id)
-                time.sleep(0.2)
+                time.sleep(1)
 
     finally:
         set_uploaded_activity_ids(uploaded)
