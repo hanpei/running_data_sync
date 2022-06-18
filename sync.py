@@ -67,5 +67,6 @@ if __name__ == "__main__":
         start_time.split(".")[0]).date()
     logger.info(f"last upload id: {last_upload_id}, date: {start_date}")
 
-    garmin_client.get_activities_by_date(start_date, datetime.date.today())
+    download_activities_by_date(
+        garmin_client, start_date, datetime.date.today())
     sync_garmin_to_strava_all(strava_client, garmin_client)
