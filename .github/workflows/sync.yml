@@ -41,8 +41,8 @@ jobs:
       - name: Cache PIP
         uses: actions/cache@v3
         with:
-          path: ${{ steps.set_variables.outputs.PIP_CACHE }}
-          key: Ubuntu-pip-${{ steps.set_variables.outputs.PY }}
+          path: ${{ env.PIP_CACHE }}
+          key: Ubuntu-pip-${{ env.PY }}
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
