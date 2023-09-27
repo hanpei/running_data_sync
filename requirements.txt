@@ -3,7 +3,7 @@ certifi==2022.5.18.1
 charset-normalizer==2.0.12
 cloudscraper==1.2.60
 fitparse==1.2.0
-garminconnect==0.1.45
+garminconnect==0.2.7
 idna==3.3
 numpy==1.22.4
 protobuf==3.19.4
